@@ -15,8 +15,8 @@ COMPLETED = 4
 sub = htcondor.Submit(
     {
         "executable": "/bin/cat",
-        "arguments": "README.md",
-        "transfer_input_files": "README.md",
+        "arguments": "$(item)",
+        "transfer_input_files": "$(item)",
         "output": "test-$(ProcID).out",
         "error": "test-$(ProcID).err",
         "request_cpus": "1",
@@ -42,18 +42,19 @@ print(schedd_ad)
 
 schedd = htcondor.Schedd(schedd_ad)
 
-ads = []
+count = 1
+itemdata = [{"item": "README.md"}, {"item": "LICENSE"}, {"item": ".gitignore"}]
 with schedd.transaction() as txn:
-    result = sub.queue(txn, count=5, ad_results=ads)
+    result = sub.queue_with_itemdata(txn, count=count, itemdata=iter(itemdata))
 
+clusterid = result.cluster()
+ads = list(sub.jobs(count=count, itemdata=iter(itemdata), clusterid=clusterid))
+print(len(ads))
 schedd.spool(ads)
 
-for ad in ads:
-    print(ad)
+constraint = f"ClusterID == {clusterid}"
 
-constraint = f"ClusterID == {result}"
-
-print("submit result is", result)
+print("submit result is", clusterid)
 
 while True:
     time.sleep(1)
