@@ -15,8 +15,8 @@ sub = htcondor.Submit(
         "executable": "/bin/cat",
         "arguments": "README.md",
         "transfer_input_files": "README.md",
-        "output": "test.out",
-        "error": "test.err",
+        "output": "test-$(ProcID).out",
+        "error": "test-$(ProcID).err",
         "request_cpus": "1",
         "request_memory": "1GB",
         "request_disk": "1GB",
@@ -26,7 +26,7 @@ sub = htcondor.Submit(
         # "My.LeaveJobInQueue": f"JobStatus == 5 && ( {COMPLETION_DATE} =?= UNDEFINED || {COMPLETION_DATE} == 0 || ((time() - {COMPLETION_DATE}) < {TEN_DAYS}) )",
         "My.LeaveJobInQueue": "true",
         "transfer_output_remaps": classad.quote(
-            "_condor_stdout=test.out ; _condor_stderr=test.err"
+            "_condor_stdout=test-$(ProcID).out ; _condor_stderr=test-$(ProcID).err"
         ),
     }
 )
@@ -43,7 +43,7 @@ schedd = htcondor.Schedd(schedd_ad)
 
 ads = []
 with schedd.transaction() as txn:
-    result = sub.queue(txn, ad_results=ads)
+    result = sub.queue(txn, count=5, ad_results=ads)
 
 schedd.spool(ads)
 
@@ -57,10 +57,10 @@ print("submit result is", result)
 while True:
     time.sleep(1)
 
-    ad = schedd.query(constraint=constraint)[0]
-    print(ad["JobStatus"])
+    statuses = [ad["JobStatus"] for ad in schedd.query(constraint=constraint)]
+    print(statuses)
 
-    if ad["JobStatus"] == 4:
+    if all(status == 4 for status in statuses):
         break
 
-schedd.retrieve(f"ClusterID == {result}")
+schedd.retrieve(constraint)

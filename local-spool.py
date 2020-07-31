@@ -13,7 +13,7 @@ sub = htcondor.Submit(
         "transfer_input_files": "README.md",
         "output": "test.out",
         "error": "test.err",
-        "held": "true",
+        "hold": "true",
         "My.HoldReason": classad.quote("Spooling input files"),
         "My.HoldReasonCode": "16",
         # "My.LeaveJobInQueue": f"JobStatus == 5 && ( {COMPLETION_DATE} =?= UNDEFINED || {COMPLETION_DATE} == 0 || ((time() - {COMPLETION_DATE}) < {TEN_DAYS}) )",
