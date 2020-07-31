@@ -1,3 +1,4 @@
+import datetime
 import os
 import time
 
@@ -7,8 +8,9 @@ import htcondor
 # htcondor.param["ALL_DEBUG"] = "D_SECURITY D_FULLDEBUG"
 # htcondor.enable_debug()
 
-TEN_DAYS = 60 * 60 * 24 * 10
+REMOVAL_DELAY = datetime.timedelta(hours=1).total_seconds()
 COMPLETION_DATE = "CompletionDate"
+COMPLETED = 4
 
 sub = htcondor.Submit(
     {
@@ -23,8 +25,7 @@ sub = htcondor.Submit(
         "hold": "true",
         "My.HoldReason": classad.quote("Spooling input files"),
         "My.HoldReasonCode": "16",
-        # "My.LeaveJobInQueue": f"JobStatus == 5 && ( {COMPLETION_DATE} =?= UNDEFINED || {COMPLETION_DATE} == 0 || ((time() - {COMPLETION_DATE}) < {TEN_DAYS}) )",
-        "My.LeaveJobInQueue": "true",
+        "My.LeaveJobInQueue": f"JobStatus == {COMPLETED} && ( {COMPLETION_DATE} =?= UNDEFINED || {COMPLETION_DATE} == 0 || ((time() - {COMPLETION_DATE}) < {REMOVAL_DELAY}) )",
         "transfer_output_remaps": classad.quote(
             "_condor_stdout=test-$(ProcID).out ; _condor_stderr=test-$(ProcID).err"
         ),
@@ -60,7 +61,8 @@ while True:
     statuses = [ad["JobStatus"] for ad in schedd.query(constraint=constraint)]
     print(statuses)
 
-    if all(status == 4 for status in statuses):
+    if all(status == COMPLETED for status in statuses):
         break
 
 schedd.retrieve(constraint)
+print(schedd.act(htcondor.JobAction.Remove, constraint))
