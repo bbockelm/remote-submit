@@ -28,20 +28,27 @@ if __name__ == "__main__":
 
     pool = "cm.chtc.wisc.edu"
 
-    if ":" in pool:
-        alias, port = pool.split(":")
-    else:
-        alias = pool
-        port = DEFAULT_PORT
+    # if ":" in pool:
+    #     alias, port = pool.split(":")
+    # else:
+    #     alias = pool
+    #     port = DEFAULT_PORT
+    #
+    # ip, port = socket.getaddrinfo(alias, int(port), socket.AF_INET)[0][4]
+    #
+    # coll_ad = classad.ClassAd(
+    #     {
+    #         "MyAddress": "<{}:{}?alias={}>".format(ip, port, alias),
+    #         "MyType": "Collector",
+    #     }
+    # )
 
-    ip, port = socket.getaddrinfo(alias, int(port), socket.AF_INET)[0][4]
-
-    coll_ad = classad.ClassAd(
-        {
-            "MyAddress": "<{}:{}?alias={}>".format(ip, port, alias),
-            "MyType": "Collector",
-        }
+    collector = htcondor.Collector(pool)
+    coll_ad = collector.locate(
+        htcondor.DaemonTypes.Schedd, "submittest0000.chtc.wisc.edu"
     )
+    print(coll_ad)
+    coll_ad["MyType"] = "Collector"
 
     htcondor.param["SEC_CLIENT_AUTHENTICATION_METHODS"] = "SSL"
 
