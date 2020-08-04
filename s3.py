@@ -1,6 +1,6 @@
 import htcondor
 
-from functions import submit, retrieve
+from remote_submit import submit, retrieve
 
 sub = htcondor.Submit(
     {
@@ -34,5 +34,5 @@ result = submit(
 )
 
 retrieve(
-    result, pool="cm.chtc.wisc.edu", schedd="submittest0000.chtc.wisc.edu",
+    result.cluster(), pool="cm.chtc.wisc.edu", schedd="submittest0000.chtc.wisc.edu",
 )
