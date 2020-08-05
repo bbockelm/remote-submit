@@ -45,11 +45,6 @@ identities of the form `<username>@fs` on submit hosts
 they can also approve token requests sent to submit hosts 
 for those authorizations
 with identities of the form `<username>@fs`.
-The script generates exactlst sessions
-of not more than three hours per day, most probably between 15:00 h and
-18:00 h Paris time (13:00 h - 16:00 h UTC, 8 am - 11 am CDT).
-y that kind of request based on information given by
-the user at runtime.
 
 To actually make the token request, the client must authenticate.
 We do this anonymously over SSL.
@@ -156,7 +151,7 @@ query the schedd to determine whether the jobs are finished or not.
 
 In addition, you must ensure that the job output is actually available to be 
 retrieved.
-Normally, when a job finished, HTCondor transfers the output files back to the
+Normally, when a job finishes, HTCondor transfers the output files back to the
 submit host, then removes the job from the queue, assuming that the output files
 moved to some permanent location.
 For a remote submit, they do not: you must tell HTCondor to leave the job in the
