@@ -189,3 +189,108 @@ they are transferred back from the job.
 
 *Note: you could also use `transfer_output_remaps` to simply send those files
 to some other location, like a normal URL transfer.*
+
+
+## Remote Token Fetch and Submit on Windows
+
+The above workflow was all done entirely on Linux, submitting to a Linux pool.
+We were able to do the same basic approach on Windows, with a few extra
+workarounds.
+
+We needed to manually pull in the Let's Encrypt CA file, which we did by copying
+a known-good version of it from a CHTC submit node.
+On a CHTC submit node, generate the desired CA file by running:
+```console
+$ cat /etc/grid-security/certificates/letsencryptauthorityx3.pem /etc/grid-security/certificates/isrgrootx1.pem > ~/LE_CA.pem
+```
+which will generate `LE_CA.pem` in your home directory.
+
+Copy that file back to your remote-submitting machine,
+place it next to `get_remote_submit_token.py`,
+and add this line:
+
+```python
+htcondor.param["AUTH_SSL_CLIENT_CAFILE"] = r"C:\full\absolute\path\to\the\pem\file.pem"
+```
+
+to the script, before it tries to get the token.
+
+Without the file, the message
+```
+08/27/20 08:22:53 -Error with certificate at depth: 1
+08/27/20 08:22:53   issuer   = /O=Digital Signature Trust Co./CN=DST Root CA X3
+08/27/20 08:22:53   subject  = /C=US/O=Let's Encrypt/CN=Let's Encrypt Authority X3
+08/27/20 08:22:53   err 20:unable to get local issuer certificate
+08/27/20 08:22:53 Tried to connect: -1
+08/27/20 08:22:53 SSL: library failure: error:14090086:SSL routines:ssl3_get_server_certificate:certificate verify failed
+```
+was the underlying error, found by running with `--debug`.
+The underlying error is "unable to get local issuer certificate", i.e., you
+asked me to verify that this is the Let's Encrypt cert, but I couldn't because
+I don't have a CA cert for it locally.
+
+The second problem is that HTCondor automatically tries to run jobs on
+a matching architecture and operating system. If you submit from Windows to a
+Linux pool, this will prevent you from matching.
+This behavior is specified 
+[in the `requirements` submit descriptor](https://htcondor.readthedocs.io/en/latest/man-pages/condor_submit.html).
+Running `condor_q -better-analyze` on your jobs will result in something like
+
+```console
+$ condor_q -better-analyze 13467738.1
+
+
+-- Schedd: submit-1.chtc.wisc.edu : <128.105.244.191:9618?...
+The Requirements expression for job 13467738.001 is
+
+    (TARGET.PoolName == "CHTC") && (TARGET.Arch == "X86_64") && (TARGET.OpSys == "WINDOWS") && (TARGET.Disk >= RequestDisk) && (TARGET.Memory >= RequestMemory) &&
+    ((TARGET.FileSystemDomain == MY.FileSystemDomain) || (TARGET.HasFileTransfer))
+
+Job 13467738.001 defines the following attributes:
+
+    FileSystemDomain = "DESKTOP-45TT5C4"
+    RequestDisk = 1048576
+    RequestMemory = 1024
+
+The Requirements expression for job 13467738.001 reduces to these conditions:
+
+         Slots
+Step    Matched  Condition
+-----  --------  ---------
+[0]       10146  TARGET.PoolName == "CHTC"
+[3]           0  TARGET.OpSys == "WINDOWS"
+[10]      10151  TARGET.HasFileTransfer
+
+No successful match recorded.
+Last failed match: Fri Aug 28 13:18:23 2020
+
+Reason for last match failure: no match found
+
+13467738.001:  Run analysis summary ignoring user priority.  Of 1265 machines,
+   1265 are rejected by your job's requirements
+      0 reject your job because of their own requirements
+      0 match and are already running your jobs
+      0 match but are serving other users
+      0 are able to run your job
+
+WARNING:  Be advised:
+   No machines matched the jobs's constraints
+```
+
+To override this behavior, you must manually set the target architecture
+and operating system in your submit description:
+
+```
+requirements = (TARGET.Arch == "X86_64") && (TARGET.OpSys == "LINUX")
+```
+
+or, from Python,
+
+```python
+htcondor.Submit(
+    {
+        "requirements": '(TARGET.Arch == "X86_64") && (TARGET.OpSys == "LINUX")',
+        ...: ...,
+    }
+)
+```
